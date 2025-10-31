@@ -27,10 +27,9 @@ services:
       - "8082:3000"
     restart: always
 
-
+  
   nginx:
     image: nginx:latest
-    
     ports:
       - "8080:8080"
     volumes:
@@ -38,12 +37,29 @@ services:
     env_file:
       - .env
     environment:
-      - ACTIVE_POOL=${ACTIVE_POOL} 
-    command: /bin/sh -c "envsubst '\$ACTIVE_POOL' < /etc/nginx/templates/nginx.template.conf > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"   
+      - ACTIVE_POOL=${ACTIVE_POOL}
     depends_on:
       - app_blue
-      - app_green 
+      - app_green
+    restart: always
+    command: /bin/sh -c "envsubst '\$ACTIVE_POOL' < /etc/nginx/templates/nginx.template.conf > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
+
+    
+
+  # 🆕 Alert watcher for Slack notifications
+  alert_watcher:
+    build: ./watcher
+    container_name: alert_watcher
+    environment:
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - ERROR_RATE_THRESHOLD=${ERROR_RATE_THRESHOLD:-2}
+      - WINDOW_SIZE=${WINDOW_SIZE:-200}
+      - ALERT_COOLDOWN_SEC=${ALERT_COOLDOWN_SEC:-300}
+    volumes:
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - nginx
     restart: always
 
-
-
+volumes:
+  nginx_logs:
